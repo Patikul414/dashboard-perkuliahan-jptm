@@ -10,33 +10,16 @@ const $ = (id)=>document.getElementById(id);
 const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbzhs8g1_7o0ztY8fK49D0NVMEMthwKFOpO4YNS0MeOmCY5eeeb4gaBU3uLs9TtpAm7ryQ/exec';
 
 /**
- * Helper JSONP: memuat data dari Apps Script lewat tag <script>, bukan
- * fetch(). Ini WAJIB dipakai (bukan fetch) karena script.google.com
- * tidak mengizinkan fetch() lintas domain (CORS diblokir browser),
- * sedangkan tag <script> tidak tunduk pada aturan CORS.
+ * Debug helper — HANYA aktif kalau URL halaman diakhiri ?debug=1
+ * (mis. https://xxx.github.io/repo/?debug=1). Berguna untuk melihat
+ * log langsung di layar HP tanpa perlu sambungkan ke DevTools/komputer,
+ * tapi tidak mengganggu tampilan mahasiswa yang normal.
  */
-function jsonp(url){
-  return new Promise(function(resolve, reject){
-    const namaCallback = 'jsonpCallback_' + Date.now() + '_' + Math.floor(Math.random()*100000);
-    window[namaCallback] = function(data){
-      resolve(data);
-      delete window[namaCallback];
-      script.remove();
-    };
-    const script = document.createElement('script');
-    script.src = url + (url.indexOf('?') > -1 ? '&' : '?') + 'callback=' + namaCallback;
-    script.onerror = function(){
-      reject(new Error('Gagal memuat data (JSONP request error).'));
-      delete window[namaCallback];
-      script.remove();
-    };
-    document.body.appendChild(script);
-  });
-}
-
-function debugLog(msg) {
+const DEBUG_MODE = new URLSearchParams(window.location.search).get('debug') === '1';
+function debugLog(msg){
+  if(!DEBUG_MODE) return;
   let el = document.getElementById('debugBox');
-  if (!el) {
+  if(!el){
     el = document.createElement('div');
     el.id = 'debugBox';
     el.style = 'position:fixed;bottom:0;left:0;right:0;background:#000;color:#0f0;font-size:11px;padding:8px;z-index:9999;max-height:40vh;overflow:auto;';
@@ -45,41 +28,52 @@ function debugLog(msg) {
   el.innerHTML += msg + '<br>';
 }
 
-function muatDaftarMatkul() {
-  debugLog('Mulai request listMatkul...');
-  const cbName = 'cbMatkul_' + Date.now();
-  window[cbName] = function(result) {
-    debugLog('Callback JALAN. success=' + result.success);
-    clearTimeout(timeoutId);
-    // ...lanjutkan proses populate dropdown seperti biasa
-  };
-
-  const timeoutId = setTimeout(function() {
-    debugLog('TIMEOUT: callback tidak pernah terpanggil setelah 10 detik.');
-  }, 10000);
-
-  const script = document.createElement('script');
-  script.src = 'https://script.google.com/macros/s/XXXXX/exec?action=listMatkul&callback=' + cbName;
-  script.onerror = function() {
-    debugLog('SCRIPT ERROR: tag <script> gagal dimuat sama sekali.');
-  };
-  document.body.appendChild(script);
+/**
+ * Helper JSONP: memuat data dari Apps Script lewat tag <script>, bukan
+ * fetch(). Ini WAJIB dipakai (bukan fetch) karena script.google.com
+ * tidak mengizinkan fetch() lintas domain (CORS diblokir browser),
+ * sedangkan tag <script> tidak tunduk pada aturan CORS.
+ */
+function jsonp(url){
+  return new Promise(function(resolve, reject){
+    const namaCallback = 'jsonpCallback_' + Date.now() + '_' + Math.floor(Math.random()*100000);
+    debugLog('jsonp() memanggil: ' + url);
+    window[namaCallback] = function(data){
+      debugLog('jsonp() callback JALAN untuk: ' + url);
+      resolve(data);
+      delete window[namaCallback];
+      script.remove();
+    };
+    const script = document.createElement('script');
+    script.src = url + (url.indexOf('?') > -1 ? '&' : '?') + 'callback=' + namaCallback;
+    script.onerror = function(){
+      debugLog('jsonp() SCRIPT ERROR untuk: ' + url);
+      reject(new Error('Gagal memuat data (JSONP request error).'));
+      delete window[namaCallback];
+      script.remove();
+    };
+    document.body.appendChild(script);
+  });
 }
 
 /* ================================================================
    DROPDOWN MATA KULIAH & KELAS
    ================================================================ */
 function muatDaftarMatkul(){
+  debugLog('muatDaftarMatkul() dipanggil. visibilityState=' + document.visibilityState);
   jsonp(WEBAPP_URL + '?action=listMatkul')
     .then(function(response){
       if(!response || !response.success){
+        debugLog('listMatkul: response tidak sukses.');
         $('matkul-select').innerHTML = '<option value="">Gagal memuat daftar mata kuliah</option>';
         return;
       }
       daftarMatkul = response.data || [];
+      debugLog('listMatkul: sukses, ' + daftarMatkul.length + ' baris diterima.');
       isiDropdownMatkul();
     })
     .catch(function(err){
+      debugLog('listMatkul: GAGAL - ' + err.message);
       $('matkul-select').innerHTML = '<option value="">Gagal memuat daftar mata kuliah</option>';
       console.error(err);
     });
@@ -106,7 +100,58 @@ function isiDropdownKelas(matkulKode){
 
 $('matkul-select').addEventListener('change', (e)=>{ isiDropdownKelas(e.target.value); });
 
-muatDaftarMatkul(); // panggil sekali saat halaman dibuka
+/** Dropdown dianggap masih kosong kalau cuma berisi placeholder (atau 0 opsi sama sekali). */
+function dropdownMatkulMasihKosong(){
+  const el = $('matkul-select');
+  return !el || el.options.length <= 1;
+}
+
+/**
+ * Wrapper aman-prerender untuk memicu muatDaftarMatkul() saat halaman
+ * dibuka. Ini menangani kasus link yang dibuka lewat Chrome Custom Tabs
+ * dari aplikasi lain (mis. Google Classroom di Android), yang sering
+ * me-render halaman ini di tab TERSEMBUNYI lebih dulu sebelum pengguna
+ * benar-benar mengetuk link, supaya terasa instan. Kalau request
+ * listMatkul terlanjur jalan saat halaman masih tersembunyi, hasilnya
+ * bisa "hilang" begitu tab akhirnya ditampilkan. Chrome menyediakan
+ * document.prerendering & event 'prerenderingchange' persis untuk
+ * kasus ini; visibilitychange & pageshow jadi jaring pengaman tambahan
+ * untuk kasus tab background pada umumnya.
+ */
+function muatDaftarMatkulAmanPrerender(){
+  const jalankan = () => muatDaftarMatkul();
+
+  if (document.prerendering) {
+    debugLog('Halaman sedang di-prerender, tunggu sampai aktif...');
+    document.addEventListener('prerenderingchange', jalankan, { once: true });
+  } else {
+    jalankan();
+  }
+
+  document.addEventListener('visibilitychange', function(){
+    if (document.visibilityState === 'visible' && dropdownMatkulMasihKosong()) {
+      debugLog('visibilitychange: tab visible & dropdown masih kosong, coba lagi...');
+      muatDaftarMatkul();
+    }
+  });
+
+  window.addEventListener('pageshow', function(){
+    if (dropdownMatkulMasihKosong()) {
+      debugLog('pageshow: dropdown masih kosong, coba lagi...');
+      muatDaftarMatkul();
+    }
+  });
+}
+
+/* Tombol "Muat ulang" manual (opsional). Kalau Anda tambahkan elemen
+   <button id="btn-reload-matkul">Muat Ulang</button> di HTML dekat
+   dropdown mata kuliah, tombol itu otomatis akan berfungsi sebagai
+   cadangan terakhir bila semua penanganan otomatis di atas tetap gagal. */
+if ($('btn-reload-matkul')) {
+  $('btn-reload-matkul').addEventListener('click', muatDaftarMatkul);
+}
+
+muatDaftarMatkulAmanPrerender(); // panggil sekali saat halaman dibuka (aman dari prerendering Chrome Custom Tabs)
 
 /* ================================================================
    LOGIN: pencarian NIM lewat backend (Code.gs)
