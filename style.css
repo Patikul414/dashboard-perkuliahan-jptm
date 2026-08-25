@@ -60,7 +60,7 @@ a:focus-visible, button:focus-visible, input:focus-visible{
     radial-gradient(circle at 15% 20%, rgba(59,130,246,.15), transparent 45%),
     radial-gradient(circle at 85% 80%, rgba(37,99,235,.12), transparent 40%),
     linear-gradient(rgba(11,30,51,.75), rgba(11,30,51,.85)),
-    url('https://s3.ap-southeast-1.amazonaws.com/maukuliah/gallery/001040/Gedung%201%20UNIMED-thumbnail.jpg') center/cover no-repeat;
+    url('https://unimed.ac.id/themes/unimed-template/assets/background.jpg') center/cover no-repeat;
   background-color:var(--navy-900); /* fallback kalau gambar gagal load */
 }
 .login-card{
