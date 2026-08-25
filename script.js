@@ -7,7 +7,7 @@ let daftarMatkul = []; // hasil fetch listMatkul, dipakai untuk isi dropdown
 const $ = (id)=>document.getElementById(id);
 
 // URL Web App Apps Script (ambil dari Deploy > Manage deployments, yang berakhiran /exec)
-const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbwItJWna2usec1cRG9iOS2zGcwGpsqmu38PtzsDwCeHSeiuElrW4Tlvnl0RFSQYBuPC/exec';
+const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbzhs8g1_7o0ztY8fK49D0NVMEMthwKFOpO4YNS0MeOmCY5eeeb4gaBU3uLs9TtpAm7ryQ/exec';
 
 /* ================================================================
    DROPDOWN MATA KULIAH & KELAS
