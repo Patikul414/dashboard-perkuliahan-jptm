@@ -7,7 +7,7 @@ let daftarMatkul = []; // hasil fetch listMatkul, dipakai untuk isi dropdown
 const $ = (id)=>document.getElementById(id);
 
 // URL Web App Apps Script (ambil dari Deploy > Manage deployments, yang berakhiran /exec)
-const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbzhs8g1_7o0ztY8fK49D0NVMEMthwKFOpO4YNS0MeOmCY5eeeb4gaBU3uLs9TtpAm7ryQ/exec';
+const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyvZwHHmxVwKRrJKXoR4DfObAzKAWMzCmUg5ZyhUWZaGLMFLCjOiPp6fTWFhBz3CX0yyQ/exec';
 
 /**
  * Debug helper — HANYA aktif kalau URL halaman diakhiri ?debug=1
