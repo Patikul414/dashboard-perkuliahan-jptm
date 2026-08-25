@@ -34,6 +34,38 @@ function jsonp(url){
   });
 }
 
+function debugLog(msg) {
+  let el = document.getElementById('debugBox');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'debugBox';
+    el.style = 'position:fixed;bottom:0;left:0;right:0;background:#000;color:#0f0;font-size:11px;padding:8px;z-index:9999;max-height:40vh;overflow:auto;';
+    document.body.appendChild(el);
+  }
+  el.innerHTML += msg + '<br>';
+}
+
+function muatDaftarMatkul() {
+  debugLog('Mulai request listMatkul...');
+  const cbName = 'cbMatkul_' + Date.now();
+  window[cbName] = function(result) {
+    debugLog('Callback JALAN. success=' + result.success);
+    clearTimeout(timeoutId);
+    // ...lanjutkan proses populate dropdown seperti biasa
+  };
+
+  const timeoutId = setTimeout(function() {
+    debugLog('TIMEOUT: callback tidak pernah terpanggil setelah 10 detik.');
+  }, 10000);
+
+  const script = document.createElement('script');
+  script.src = 'https://script.google.com/macros/s/XXXXX/exec?action=listMatkul&callback=' + cbName;
+  script.onerror = function() {
+    debugLog('SCRIPT ERROR: tag <script> gagal dimuat sama sekali.');
+  };
+  document.body.appendChild(script);
+}
+
 /* ================================================================
    DROPDOWN MATA KULIAH & KELAS
    ================================================================ */
