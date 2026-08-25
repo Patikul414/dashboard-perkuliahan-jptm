@@ -360,4 +360,3 @@ tbody tr:last-child td{border-bottom:none;}
   .bottom-nav button.active{color:var(--blue-600);}
 }
 @media (min-width:768px){ .bottom-nav{display:none;} }
-
