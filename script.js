@@ -153,6 +153,44 @@ if ($('btn-reload-matkul')) {
 
 muatDaftarMatkulAmanPrerender(); // panggil sekali saat halaman dibuka (aman dari prerendering Chrome Custom Tabs)
 
+function muatDaftarMatkulDenganRetry(maxPercobaan = 5) {
+  let percobaan = 0;
+
+  function coba() {
+    percobaan++;
+
+    debugLog('Percobaan memuat matkul ke-' + percobaan);
+
+    jsonp(WEBAPP_URL + '?action=listMatkul')
+      .then(function(response) {
+
+        if (response && response.success && Array.isArray(response.data)) {
+          daftarMatkul = response.data;
+          debugLog('Berhasil memuat ' + daftarMatkul.length + ' mata kuliah.');
+
+          isiDropdownMatkul();
+          return;
+        }
+
+        throw new Error('Response tidak valid');
+
+      })
+      .catch(function(err) {
+
+        debugLog('Gagal percobaan ' + percobaan + ': ' + err.message);
+
+        if (percobaan < maxPercobaan) {
+          setTimeout(coba, 1500);
+        } else {
+          $('matkul-select').innerHTML =
+            '<option value="">Gagal memuat daftar mata kuliah</option>';
+        }
+
+      });
+  }
+
+  coba();
+}
 /* ================================================================
    LOGIN: pencarian NIM lewat backend (Code.gs)
    ================================================================ */
