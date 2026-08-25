@@ -9,12 +9,36 @@ const $ = (id)=>document.getElementById(id);
 // URL Web App Apps Script (ambil dari Deploy > Manage deployments, yang berakhiran /exec)
 const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbzhs8g1_7o0ztY8fK49D0NVMEMthwKFOpO4YNS0MeOmCY5eeeb4gaBU3uLs9TtpAm7ryQ/exec';
 
+/**
+ * Helper JSONP: memuat data dari Apps Script lewat tag <script>, bukan
+ * fetch(). Ini WAJIB dipakai (bukan fetch) karena script.google.com
+ * tidak mengizinkan fetch() lintas domain (CORS diblokir browser),
+ * sedangkan tag <script> tidak tunduk pada aturan CORS.
+ */
+function jsonp(url){
+  return new Promise(function(resolve, reject){
+    const namaCallback = 'jsonpCallback_' + Date.now() + '_' + Math.floor(Math.random()*100000);
+    window[namaCallback] = function(data){
+      resolve(data);
+      delete window[namaCallback];
+      script.remove();
+    };
+    const script = document.createElement('script');
+    script.src = url + (url.indexOf('?') > -1 ? '&' : '?') + 'callback=' + namaCallback;
+    script.onerror = function(){
+      reject(new Error('Gagal memuat data (JSONP request error).'));
+      delete window[namaCallback];
+      script.remove();
+    };
+    document.body.appendChild(script);
+  });
+}
+
 /* ================================================================
    DROPDOWN MATA KULIAH & KELAS
    ================================================================ */
 function muatDaftarMatkul(){
-  fetch(WEBAPP_URL + '?action=listMatkul')
-    .then(res => res.json())
+  jsonp(WEBAPP_URL + '?action=listMatkul')
     .then(function(response){
       if(!response || !response.success){
         $('matkul-select').innerHTML = '<option value="">Gagal memuat daftar mata kuliah</option>';
@@ -91,8 +115,7 @@ function handleLogin(){
     + '&matkul=' + encodeURIComponent(matkulKode)
     + '&kelas=' + encodeURIComponent(kelasKode);
 
-  fetch(url)
-    .then(res => res.json())
+  jsonp(url)
     .then(function(response){
       btn.classList.remove('loading');
       btn.disabled = false;
